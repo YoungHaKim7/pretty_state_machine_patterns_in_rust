@@ -1,123 +1,75 @@
-// This is some functionality shared by all of the states.
-trait SharedFunctionality {
-    fn get_shared_value(&self) -> usize;
-}
+// Main entry point demonstrating the refactored state machine
+// This shows how the "divide and conquer" approach makes the code more organized
 
-#[derive(Debug)]
-struct Waiting {
-    waiting_time: std::time::Duration,
-    // Value shared by all states.
-    shared_value: usize,
-}
-
-impl Waiting {
-    fn new() -> Self {
-        Waiting {
-            waiting_time: std::time::Duration::new(0, 0),
-            shared_value: 0,
-        }
-    }
-    // Consumes the value!
-    fn to_filling(self) -> Filling {
-        Filling {
-            rate: 1,
-            shared_value: 0,
-        }
-    }
-}
-impl SharedFunctionality for Waiting {
-    fn get_shared_value(&self) -> usize {
-        self.shared_value
-    }
-}
-
-#[derive(Debug)]
-struct Filling {
-    rate: usize,
-    // Value shared by all states.
-    shared_value: usize,
-}
-impl SharedFunctionality for Filling {
-    fn get_shared_value(&self) -> usize {
-        self.shared_value
-    }
-}
-// This is our state machine.
-#[derive(Debug)]
-struct BottleFillingMachine<S> {
-    shared_value: usize,
-    state: S,
-}
-
-#[derive(Debug)]
-struct Done;
-
-// Our Machine starts in the 'Waiting' state.
-impl BottleFillingMachine<Waiting> {
-    fn new(shared_value: usize) -> Self {
-        BottleFillingMachine {
-            shared_value,
-            state: Waiting {
-                waiting_time: std::time::Duration::new(0, 0),
-                shared_value,
-            },
-        }
-    }
-}
-
-// The following are the defined transitions between states.
-impl From<BottleFillingMachine<Waiting>> for BottleFillingMachine<Filling> {
-    fn from(val: BottleFillingMachine<Waiting>) -> BottleFillingMachine<Filling> {
-        BottleFillingMachine {
-            shared_value: val.shared_value,
-            state: Filling {
-                rate: 1,
-                shared_value: val.shared_value,
-            },
-        }
-    }
-}
-
-impl From<BottleFillingMachine<Filling>> for BottleFillingMachine<Done> {
-    fn from(val: BottleFillingMachine<Filling>) -> BottleFillingMachine<Done> {
-        BottleFillingMachine {
-            shared_value: val.shared_value,
-            state: Done,
-        }
-    }
-}
-
-impl From<BottleFillingMachine<Done>> for BottleFillingMachine<Waiting> {
-    fn from(val: BottleFillingMachine<Done>) -> BottleFillingMachine<Waiting> {
-        BottleFillingMachine {
-            shared_value: val.shared_value,
-            state: Waiting {
-                waiting_time: std::time::Duration::new(0, 0),
-                shared_value: val.shared_value,
-            },
-        }
-    }
-}
+use a04_code_divided_conquer_ver2::{
+    BottleFillingMachine, Waiting, Filling, Done, SharedFunctionality
+};
 
 fn main() {
-    let bottle_filler = BottleFillingMachine::new(0);
-
-    // (Mock) Check on some shared and state-specific values
-    assert_eq!(
-        bottle_filler.state.waiting_time,
-        std::time::Duration::new(0, 0)
-    );
-    assert_eq!(bottle_filler.shared_value, 0);
-
-    // Transition
+    println!("=== Bottle Filling Machine Demo ===");
+    
+    // Create a new machine in Waiting state
+    let bottle_filler = BottleFillingMachine::new(42);
+    
+    println!("Initial state:");
+    println!("  Machine: {:?}", bottle_filler);
+    println!("  Shared value: {}", bottle_filler.shared_value());
+    println!("  Waiting time: {:?}", bottle_filler.waiting_time());
+    println!("  State shared value: {}", bottle_filler.state.get_shared_value());
+    
+    // Verify initial state
+    assert_eq!(bottle_filler.state.waiting_time, std::time::Duration::new(0, 0));
+    assert_eq!(bottle_filler.shared_value(), 42);
+    
+    println!("\n--- Transitioning to Filling state ---");
+    
+    // Transition to Filling state using the From trait
     let bottle_filler = BottleFillingMachine::<Filling>::from(bottle_filler);
-
-    // Can't do this anymore, it's been consumed!:
-    // assert_eq!(bottle_filler.state.waiting_time, std::time::Duration::new(0, 0));
-
+    
+    println!("Filling state:");
+    println!("  Machine: {:?}", bottle_filler);
+    println!("  Shared value: {}", bottle_filler.shared_value());
+    println!("  Filling rate: {}", bottle_filler.filling_rate());
+    println!("  State shared value: {}", bottle_filler.state.get_shared_value());
+    
+    // Note: Can't access waiting_time anymore - the state has changed!
+    // This demonstrates the type safety of the state machine
+    
+    println!("\n--- Transitioning to Done state ---");
+    
+    // Transition to Done state
     let bottle_filler = BottleFillingMachine::<Done>::from(bottle_filler);
-    let in_waiting_state = Waiting::new();
-    let in_filling_state = in_waiting_state.to_filling();
-    println!("bottle_filler : {bottle_filler:?}");
-    println!("in_filling_state : {in_filling_state:?}")
+    
+    println!("Done state:");
+    println!("  Machine: {:?}", bottle_filler);
+    println!("  Shared value: {}", bottle_filler.shared_value());
+    println!("  Is done: {}", bottle_filler.is_done());
+    println!("  State shared value: {}", bottle_filler.state.get_shared_value());
+    
+    println!("\n--- Transitioning back to Waiting state ---");
+    
+    // Transition back to Waiting state (completing the cycle)
+    let bottle_filler = BottleFillingMachine::<Waiting>::from(bottle_filler);
+    
+    println!("Back to Waiting state:");
+    println!("  Machine: {:?}", bottle_filler);
+    println!("  Shared value: {}", bottle_filler.shared_value());
+    println!("  Waiting time: {:?}", bottle_filler.waiting_time());
+    println!("  State shared value: {}", bottle_filler.state.get_shared_value());
+    
+    println!("\n--- Demonstrating state-specific methods ---");
+    
+    // Demonstrate state-specific functionality
+    let waiting_state = Waiting::new();
+    println!("Standalone Waiting state: {:?}", waiting_state);
+    
+    let filling_state = waiting_state.to_filling();
+    println!("Converted to Filling state: {:?}", filling_state);
+    
+    println!("\n=== Demo Complete ===");
+    println!("The state machine successfully demonstrates:");
+    println!("  ✓ Type-safe state transitions");
+    println!("  ✓ Shared state preservation");
+    println!("  ✓ Modular, organized code structure");
+    println!("  ✓ Clear separation of concerns");
 }
