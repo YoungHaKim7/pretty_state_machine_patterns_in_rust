@@ -1,5 +1,5 @@
 [package]
-name = "c02_code_divided_conquer"
+name = "c03_code_divided_conquer"
 version = "0.1.0"
 edition = "2024"
 
